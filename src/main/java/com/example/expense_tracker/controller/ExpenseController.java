@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/expenses")
@@ -79,4 +80,22 @@ public String deleteExpense(@PathVariable Long id) {
 
     return "Expense deleted successfully";
 }
+    @GetMapping("/total")
+    public Map<String, Double> getTotalExpenses(Principal principal) {
+
+        Double total = expenseService.getTotalExpenses(principal.getName());
+
+        return Map.of("total", total);
+    }
+
+    @GetMapping("/category-summary")
+    public List<Map<String, Object>> getCategorySummary(Principal principal) {
+
+        return expenseService.getCategoryWiseExpenses(principal.getName());
+    }
+    @GetMapping("/monthly-summary")
+    public List<Map<String, Object>> getMonthlySummary(Principal principal) {
+
+        return expenseService.getMonthlyExpenses(principal.getName());
+    }
 }

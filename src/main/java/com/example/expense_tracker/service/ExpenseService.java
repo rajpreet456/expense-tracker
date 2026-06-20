@@ -13,6 +13,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 @Service
 public class ExpenseService {
 
@@ -92,4 +97,51 @@ public class ExpenseService {
 
         expenseRepository.delete(expense);
     }
-}
+
+        // TotalExpense
+        public Double getTotalExpenses(String username) {
+
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            Double total = expenseRepository.getTotalExpensesByUser(user);
+
+            return total != null ? total : 0.0;
+        }
+    public List<Map<String, Object>> getCategoryWiseExpenses(String username) {
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Object[]> results = expenseRepository.getCategoryWiseExpenses(user);
+
+        List<Map<String, Object>> response = new ArrayList<>();
+
+        for (Object[] row : results) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("category", row[0]);
+            map.put("total", row[1]);
+            response.add(map);
+        }
+
+        return response;
+    }
+    public List<Map<String, Object>> getMonthlyExpenses(String username) {
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Object[]> results = expenseRepository.getMonthlyExpenses(user);
+
+        List<Map<String, Object>> response = new ArrayList<>();
+
+        for (Object[] row : results) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("month", row[0]);
+            map.put("total", row[1]);
+            response.add(map);
+        }
+
+        return response;
+    }
+    }
