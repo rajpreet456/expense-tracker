@@ -4,6 +4,8 @@ import com.example.expense_tracker.dto.ExpenseDTO;
 import com.example.expense_tracker.dto.ExpenseRequestDTO;
 import com.example.expense_tracker.entity.Expense;
 import com.example.expense_tracker.entity.User;
+import com.example.expense_tracker.exception.ResourceNotFoundException;
+import com.example.expense_tracker.exception.UnauthorizedException;
 import com.example.expense_tracker.repository.ExpenseRepository;
 import com.example.expense_tracker.repository.UserRepository;
 
@@ -16,10 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class ExpenseService {
@@ -30,7 +29,7 @@ public class ExpenseService {
     @Autowired
     private UserRepository userRepository;
 
-    //converting entity -> dto
+    // ENTITY -> DTO
     private ExpenseDTO convertToDTO(Expense expense) {
         ExpenseDTO dto = new ExpenseDTO();
         dto.setId(expense.getId());
@@ -44,7 +43,6 @@ public class ExpenseService {
     // ADD EXPENSE
     public ExpenseDTO addExpense(ExpenseRequestDTO dto, String username) {
 
-        // 1. Create entity
         Expense expense = new Expense();
 
         expense.setTitle(dto.getTitle());
@@ -52,17 +50,23 @@ public class ExpenseService {
         expense.setCategory(dto.getCategory());
         expense.setDate(LocalDate.parse(dto.getDate()));
 
-        // 2. Attach user
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         expense.setUser(user);
 
-        // 3. Save to DB
-        Expense saved = expenseRepository.save(expense);
+        return convertToDTO(expenseRepository.save(expense));
+    }
+    public ExpenseDTO getExpenseById(Long id, String username) {
 
-        // 4. Convert to DTO
-        return convertToDTO(saved);
+        Expense expense = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found with id: " + id));
+
+        if (!expense.getUser().getUsername().equals(username)) {
+            throw new UnauthorizedException("You are not allowed to view this expense");
+        }
+
+        return convertToDTO(expense);
     }
 
     // GET EXPENSES WITH PAGINATION
@@ -92,18 +96,17 @@ public class ExpenseService {
                     username, pageable);
         }
 
-        //  CONVERT PAGE<Expense> → PAGE<ExpenseDTO>
         return expenses.map(this::convertToDTO);
-
     }
-    //UPDATE EXPENSE
+
+    // UPDATE EXPENSE
     public ExpenseDTO updateExpense(Long id, ExpenseRequestDTO dto, String username) {
 
         Expense expense = expenseRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Expense not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found with id: " + id));
 
         if (!expense.getUser().getUsername().equals(username)) {
-            throw new RuntimeException("Not allowed");
+            throw new UnauthorizedException("You are not allowed to update this expense");
         }
 
         expense.setTitle(dto.getTitle());
@@ -118,30 +121,31 @@ public class ExpenseService {
     public void deleteExpense(Long id, String username) {
 
         Expense expense = expenseRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Expense not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found with id: " + id));
 
-        // Ownership check
         if (!expense.getUser().getUsername().equals(username)) {
-            throw new RuntimeException("You are not allowed to delete this expense");
+            throw new UnauthorizedException("You are not allowed to delete this expense");
         }
 
         expenseRepository.delete(expense);
     }
 
-        // TotalExpense
-        public Double getTotalExpenses(String username) {
+    // TOTAL EXPENSE
+    public Double getTotalExpenses(String username) {
 
-            User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-            Double total = expenseRepository.getTotalExpensesByUser(user);
+        Double total = expenseRepository.getTotalExpensesByUser(user);
 
-            return total != null ? total : 0.0;
-        }
+        return total != null ? total : 0.0;
+    }
+
+    // CATEGORY WISE
     public List<Map<String, Object>> getCategoryWiseExpenses(String username) {
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         List<Object[]> results = expenseRepository.getCategoryWiseExpenses(user);
 
@@ -156,10 +160,12 @@ public class ExpenseService {
 
         return response;
     }
+
+    // MONTHLY
     public List<Map<String, Object>> getMonthlyExpenses(String username) {
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         List<Object[]> results = expenseRepository.getMonthlyExpenses(user);
 
@@ -174,4 +180,4 @@ public class ExpenseService {
 
         return response;
     }
-    }
+}

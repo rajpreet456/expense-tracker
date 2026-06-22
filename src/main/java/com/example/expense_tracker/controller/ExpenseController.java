@@ -3,13 +3,16 @@ package com.example.expense_tracker.controller;
 import com.example.expense_tracker.dto.ExpenseDTO;
 import com.example.expense_tracker.dto.ExpenseRequestDTO;
 import com.example.expense_tracker.entity.Expense;
+import com.example.expense_tracker.exception.UnauthorizedException;
 import com.example.expense_tracker.repository.ExpenseRepository;
 import com.example.expense_tracker.service.ExpenseService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -33,6 +36,17 @@ public class ExpenseController {
             Principal principal) {
 
         return expenseService.addExpense(dto, principal.getName());
+    }
+    @GetMapping("/{id}")
+    public ExpenseDTO getExpenseById(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        if (authentication == null) {
+            throw new UnauthorizedException("User not authenticated");
+        }
+
+        return expenseService.getExpenseById(id, authentication.getName());
     }
 
     // Get Expenses
